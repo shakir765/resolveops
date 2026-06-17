@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ResolveOps Admin Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #1f2937; }
+    h1, h2 { margin-bottom: 8px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+    th { background: #f3f4f6; }
+    .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+    .card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; }
+    .card strong { display: block; font-size: 20px; }
+  </style>
+</head>
+<body>
+  <h1>ResolveOps Admin Dashboard</h1>
+
+  <div class="cards">
+    <div class="card"><span>Total Tickets</span><strong>{{ summary.total }}</strong></div>
+    <div class="card"><span>Resolution Rate</span><strong>{{ summary.resolution_rate }}</strong></div>
+    <div class="card"><span>Escalation Rate</span><strong>{{ summary.escalation_rate }}</strong></div>
+    <div class="card"><span>Avg Confidence</span><strong>{{ summary.avg_confidence }}</strong></div>
+    <div class="card"><span>SLA Met Rate</span><strong>{{ summary.sla_met_rate }}</strong></div>
+  </div>
+
+  <h2>Recent Tickets</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Title</th><th>Status</th><th>Priority</th><th>Category</th><th>Confidence</th><th>Escalated</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ticket in tickets %}
+      <tr>
+        <td>{{ ticket.id }}</td>
+        <td>{{ ticket.title }}</td>
+        <td>{{ ticket.status }}</td>
+        <td>{{ ticket.priority or "-" }}</td>
+        <td>{{ ticket.category or "-" }}</td>
+        <td>{{ ticket.confidence or "-" }}</td>
+        <td>{{ ticket.escalated }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Recent Workflow Runs</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Run ID</th><th>Ticket ID</th><th>Thread ID</th><th>Status</th><th>Step</th><th>Version</th><th>Prompt Version</th><th>Started</th><th>Completed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.id }}</td>
+        <td>{{ run.ticket_id }}</td>
+        <td>{{ run.thread_id }}</td>
+        <td>{{ run.status }}</td>
+        <td>{{ run.current_step or "-" }}</td>
+        <td>{{ run.state_version }}</td>
+        <td>{{ run.prompt_version }}</td>
+        <td>{{ run.started_at or "-" }}</td>
+        <td>{{ run.completed_at or "-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

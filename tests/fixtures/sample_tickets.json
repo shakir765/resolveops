@@ -1,0 +1,23 @@
+[
+  {
+    "ticket_id": "INC-10482",
+    "title": "Cannot connect to VPN",
+    "description": "User gets error 619 when connecting from home. Worked yesterday.",
+    "user_id": "jsmith",
+    "source": "servicenow"
+  },
+  {
+    "ticket_id": "INC-10483",
+    "title": "Account locked after failed login",
+    "description": "User entered wrong password multiple times and account is locked.",
+    "user_id": "alee",
+    "source": "api"
+  },
+  {
+    "ticket_id": "INC-10484",
+    "title": "Request new laptop",
+    "description": "Employee needs a new laptop for onboarding next week.",
+    "user_id": "mkhan",
+    "source": "jira"
+  }
+]

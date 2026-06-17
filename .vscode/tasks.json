@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ResolveOps: Docker Infra",
+      "type": "shell",
+      "command": "docker compose up -d postgres redis rabbitmq",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {}
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ResolveOps: Seed KB",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe scripts/seed_kb.py",
+      "windows": {
+        "command": ".venv\\Scripts\\python.exe scripts/seed_kb.py"
+      },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ResolveOps: Start All (one click)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts/start_all.ps1",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "ResolveOps: Start Apps Only",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts/start_apps.ps1",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ResolveOps: Stop Apps Only",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts/stop_apps.ps1",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ResolveOps: Stop Docker",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts/stop_all.ps1",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ResolveOps: Docker Everything (containers)",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "detail": "Runs API, worker, RAG, tools inside Docker (requires image build)"
+    }
+  ]
+}

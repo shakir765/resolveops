@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: resolveops
+      POSTGRES_PASSWORD: resolveops
+      POSTGRES_DB: resolveops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resolveops"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis/redis-stack:7.4.0-v1
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    command: uvicorn services.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  graph-worker:
+    build: .
+    command: python -m services.graph_worker.main
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  rag-service:
+    build: .
+    command: uvicorn services.rag_service.main:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - "8002:8002"
+    env_file: .env
+    volumes:
+      - .:/app
+      - chroma_data:/app/data/chroma
+    working_dir: /app
+
+  tool-runner:
+    build: .
+    command: uvicorn services.tool_runner.main:app --host 0.0.0.0 --port 8003 --reload
+    ports:
+      - "8003:8003"
+    env_file: .env
+    volumes:
+      - .:/app
+    working_dir: /app
+
+volumes:
+  postgres_data:
+  chroma_data:
