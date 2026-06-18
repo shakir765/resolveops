@@ -1,4 +1,4 @@
-# ResolveOps — stop Docker infrastructure (+ optional data wipe).
+# ResolveOps - stop Docker infrastructure (+ optional data wipe).
 # App processes must be stopped separately unless already closed.
 #
 # Usage:

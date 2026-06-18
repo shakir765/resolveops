@@ -1,4 +1,4 @@
-# ResolveOps — stop Docker infrastructure only (postgres, redis, rabbitmq).
+# ResolveOps - stop Docker infrastructure only (postgres, redis, rabbitmq).
 # Does NOT stop local app processes (API, RAG, Tool Runner, Graph Worker).
 #
 # Usage:
@@ -30,4 +30,4 @@ if ($ClearData -and -not $ResetVolume) {
 Stop-ResolveOpsInfra -ProjectRoot $ProjectRoot -ResetVolume:$ResetVolume
 
 Write-Host ""
-Write-Host "Done. App processes are unchanged — stop them with .\scripts\stop_apps.ps1" -ForegroundColor Green
+Write-Host "Done. App processes are unchanged - stop them with .\scripts\stop_apps.ps1" -ForegroundColor Green

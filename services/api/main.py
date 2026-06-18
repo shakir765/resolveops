@@ -13,6 +13,7 @@ Heavy agent orchestration lives in services/graph_worker + resolveops_core/graph
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -74,6 +75,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ResolveOps API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ServiceNow / Jira webhook endpoints (auto-import + queue processing).
 app.include_router(webhooks_router)
@@ -153,7 +165,6 @@ async def process_ticket(ticket_id: str, body: ProcessRequest):
 
         # Avoid duplicate runs — resume an in-flight run if one already exists.
         active = workflow_repo.get_active_run(ticket.id)
-        x=500
         if active:
             run = active
         else:
@@ -205,10 +216,10 @@ async def get_ticket(ticket_id: str):
 
 
 @app.get("/tickets")
-async def list_tickets(tenant_id: str | None = None):
+async def list_tickets(tenant_id: str | None = None, user_id: str | None = None):
     session = SessionLocal()
     try:
-        tickets = TicketRepository(session).list_tickets(tenant_id=tenant_id)
+        tickets = TicketRepository(session).list_tickets(tenant_id=tenant_id, user_id=user_id)
         return {"tickets": [_serialize_ticket(t) for t in tickets]}
     finally:
         session.close()

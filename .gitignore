@@ -12,3 +12,5 @@ htmlcov/
 dist/
 .build/
 .run/
+portal/node_modules/
+portal/dist/
