@@ -87,7 +87,14 @@ uvicorn services.api.main:app --port 8000 --reload
 
 # Terminal 4
 python -m services.graph_worker.main
+
+# Terminal 5 — Helpdesk portal (optional)
+cd portal
+npm install
+npm run dev
 ```
+
+Portal: [http://localhost:5173](http://localhost:5173) (see `portal/README.md`).
 
 ## API examples
 

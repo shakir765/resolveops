@@ -39,10 +39,17 @@ class TicketRepository:
     def get_ticket(self, ticket_id: str) -> Optional[Ticket]:
         return self.session.get(Ticket, ticket_id)
 
-    def list_tickets(self, tenant_id: Optional[str] = None, limit: int = 50) -> list[Ticket]:
+    def list_tickets(
+        self,
+        tenant_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[Ticket]:
         query = self.session.query(Ticket).order_by(Ticket.created_at.desc())
         if tenant_id:
             query = query.filter(Ticket.tenant_id == tenant_id)
+        if user_id:
+            query = query.filter(Ticket.user_id == user_id)
         return query.limit(limit).all()
 
     def update_from_state(self, ticket_id: str, state: dict[str, Any]) -> Optional[Ticket]:
