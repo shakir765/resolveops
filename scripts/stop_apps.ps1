@@ -112,7 +112,7 @@ if (Test-Path $PidFile) {
     Start-Sleep -Milliseconds 300
 }
 
-# 2) Stop uvicorn reloaders/workers by command line (before port kill — avoids respawn)
+# 2) Stop uvicorn reloaders/workers by command line (before port kill - avoids respawn)
 Write-Host "Stopping uvicorn services..."
 $uvicornStopped = Stop-UvicornProcesses
 if ($uvicornStopped -eq 0) {

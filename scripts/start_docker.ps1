@@ -1,4 +1,4 @@
-# ResolveOps — start Docker infrastructure only (postgres, redis, rabbitmq).
+# ResolveOps - start Docker infrastructure only (postgres, redis, rabbitmq).
 # Does NOT start API, RAG, Tool Runner, or Graph Worker.
 #
 # Usage:
