@@ -5,10 +5,10 @@ from resolveops_core.db.models import SessionLocal
 from resolveops_core.db.repository import TicketRepository
 from resolveops_core.integrations.ticketing import JiraClient, ServiceNowClient
 from resolveops_core.config import settings
-from resolveops_core.infra.queue import TicketQueue
+from resolveops_core.messaging import TicketJob, get_ticket_queue
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
-queue = TicketQueue()
+queue = get_ticket_queue()
 
 
 class WebhookPayload(BaseModel):
@@ -35,8 +35,7 @@ async def servicenow_webhook(ticket_number: str):
         workflow_repo = WorkflowRepository(session)
         run = workflow_repo.create_run(ticket.id, ticket.tenant_id, settings.prompt_version)
         job = {**data, "tenant_id": ticket.tenant_id, "run_id": run.id, "thread_id": run.thread_id}
-        await queue.connect()
-        await queue.publish(job)
+        await queue.publish(TicketJob.from_dict(job))
         return {"queued": True, "ticket_id": ticket.id, "run_id": run.id}
     finally:
         session.close()
@@ -56,8 +55,7 @@ async def jira_webhook(issue_key: str):
         workflow_repo = WorkflowRepository(session)
         run = workflow_repo.create_run(ticket.id, ticket.tenant_id, settings.prompt_version)
         job = {**data, "tenant_id": ticket.tenant_id, "run_id": run.id, "thread_id": run.thread_id}
-        await queue.connect()
-        await queue.publish(job)
+        await queue.publish(TicketJob.from_dict(job))
         return {"queued": True, "ticket_id": ticket.id, "run_id": run.id}
     finally:
         session.close()

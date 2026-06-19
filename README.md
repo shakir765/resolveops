@@ -142,7 +142,23 @@ ResolveOps treats LangGraph state as the **runtime working memory** for one tick
 | Redis requirements | Redis Stack or Redis 8+ (RedisJSON + RediSearch modules required) |
 | Interrupt / HITL | Graph pauses before `human_review`; resume via `POST /runs/{thread_id}/resume` |
 | Idempotent runs | Active runs are reused; worker waits for Redis lock, skips finished runs, requeues on lock timeout |
+| Job queue | Pluggable backend (`QUEUE_BACKEND`); RabbitMQ default via `resolveops_core/messaging/` |
 | Inspect state | `GET /state/threads/{thread_id}` returns checkpoint snapshot + pending steps |
+
+### Job queue adapter
+
+Ticket jobs flow through a broker-agnostic interface so you can swap RabbitMQ for Kafka later with minimal changes:
+
+```text
+resolveops_core/messaging/
+  protocol.py          TicketJobQueue protocol + JobHandler
+  types.py             TicketJob, QueueMessage, AckAction (ACK | RETRY | REJECT)
+  factory.py           get_ticket_queue() — reads QUEUE_BACKEND
+  rabbitmq_adapter.py  default implementation
+  kafka_adapter.py     stub for future Kafka support
+```
+
+API and graph worker call `get_ticket_queue()` and publish/consume `TicketJob` payloads. The worker handler returns `AckAction` instead of raising broker-specific exceptions. To migrate to Kafka later: implement `KafkaTicketQueue`, add Kafka to `docker-compose.yml`, and set `QUEUE_BACKEND=kafka` in `.env`.
 
 ```text
 API/Worker -> seed initial_state -> LangGraph invoke (Redis checkpoint each step)

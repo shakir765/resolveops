@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     redis_checkpoint_refresh_on_read: bool = True
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
 
+    queue_backend: str = "rabbitmq"
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_ticket_topic: str = "resolveops.tickets"
+    kafka_consumer_group: str = "resolveops-graph-workers"
+
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
 
