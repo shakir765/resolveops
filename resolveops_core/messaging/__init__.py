@@ -1,16 +1,11 @@
-"""Backward-compatible queue exports. Prefer resolveops_core.messaging."""
-
 from resolveops_core.messaging.factory import get_ticket_queue
 from resolveops_core.messaging.rabbitmq_adapter import RabbitMQTicketQueue
 from resolveops_core.messaging.types import AckAction, QueueMessage, TicketJob
-
-# Legacy alias — RabbitMQ adapter class.
-TicketQueue = RabbitMQTicketQueue
 
 __all__ = [
     "AckAction",
     "QueueMessage",
     "TicketJob",
-    "TicketQueue",
+    "RabbitMQTicketQueue",
     "get_ticket_queue",
 ]

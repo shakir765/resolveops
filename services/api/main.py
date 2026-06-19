@@ -22,7 +22,7 @@ from resolveops_core.config import settings
 from resolveops_core.db.models import SessionLocal, init_db
 from resolveops_core.db.repository import IdempotencyRepository, TicketRepository, WorkflowRepository
 from resolveops_core.evaluation.metrics import EvaluationFramework
-from resolveops_core.infra.queue import TicketQueue
+from resolveops_core.messaging import TicketJob, get_ticket_queue
 from resolveops_core.integrations.ticketing import JiraClient, ServiceNowClient
 from resolveops_core.logging import configure_logging, get_logger
 from services.api.routes.webhooks import router as webhooks_router
@@ -31,8 +31,8 @@ configure_logging(settings.log_level)
 logger = get_logger(__name__)
 templates = Jinja2Templates(directory="services/api/templates")
 
-# Shared RabbitMQ publisher — graph_worker consumes from the same queue.
-queue = TicketQueue()
+# Shared job queue publisher — graph_worker consumes via the same backend.
+queue = get_ticket_queue()
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ class TicketCreate(BaseModel):
 
 
 class ProcessRequest(BaseModel):
-    # True (default): publish job to RabbitMQ for graph_worker.
+    # True (default): publish job to the message queue for graph_worker.
     # False: run LangGraph inline in this request (useful for local debugging).
     async_mode: bool = True
 
@@ -62,7 +62,7 @@ class HumanFeedbackRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# App lifecycle — wire up DB tables and RabbitMQ on startup
+# App lifecycle — wire up DB tables and job queue on startup
 # ---------------------------------------------------------------------------
 
 
@@ -152,7 +152,7 @@ async def process_ticket(ticket_id: str, body: ProcessRequest):
     Kick off automated ticket resolution.
 
     Creates (or reuses) a workflow run, then either:
-      - publishes a job to RabbitMQ for graph_worker (async_mode=True), or
+      - publishes a job to the message queue for graph_worker (async_mode=True), or
       - invokes GraphRunner directly in this process (async_mode=False).
     """
     session = SessionLocal()
@@ -187,7 +187,7 @@ async def process_ticket(ticket_id: str, body: ProcessRequest):
         }
 
         if body.async_mode:
-            await queue.publish(job)
+            await queue.publish(TicketJob.from_dict(job))
             return {"message": "Ticket queued for processing", "run_id": run.id, "thread_id": run.thread_id}
 
         from resolveops_core.graph.runner import GraphRunner
