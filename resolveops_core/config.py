@@ -37,5 +37,10 @@ class Settings(BaseSettings):
     lock_poll_interval_seconds: int = 5
     lock_wait_timeout_seconds: int = 300
 
+    otel_enabled: bool = True
+    otel_exporter_otlp_endpoint: str = "http://localhost:4317"
+    otel_exporter_otlp_insecure: bool = True
+    otel_traces_sample_ratio: float = 1.0
+
 
 settings = Settings()

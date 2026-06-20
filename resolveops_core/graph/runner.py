@@ -9,8 +9,13 @@ from resolveops_core.graph.state import graph_config, initial_state, snapshot_fo
 from resolveops_core.graph.state_store import StateStore
 from resolveops_core.graph.workflow import compile_workflow
 from resolveops_core.logging import get_logger
+from resolveops_core.telemetry import get_tracer
 
 logger = get_logger(__name__)
+
+
+def _tracer():
+    return get_tracer(__name__)
 
 
 class GraphRunner:
@@ -43,6 +48,39 @@ class GraphRunner:
         thread_id = payload.get("thread_id")
 
         try:
+            with _tracer().start_as_current_span(
+                "graph.run",
+                attributes={
+                    "ticket.id": ticket_id,
+                    "run.id": run_id or "",
+                    "thread.id": thread_id or "",
+                },
+            ):
+                return self._run_traced(
+                    payload,
+                    ticket_id,
+                    tenant_id,
+                    run_id,
+                    thread_id,
+                    ticket_repo,
+                    workflow_repo,
+                    store,
+                )
+        finally:
+            session.close()
+
+    def _run_traced(
+        self,
+        payload: dict,
+        ticket_id: str,
+        tenant_id: str,
+        run_id: str | None,
+        thread_id: str | None,
+        ticket_repo,
+        workflow_repo,
+        store: StateStore,
+    ) -> dict:
+        try:
             if not run_id or not thread_id:
                 run = workflow_repo.create_run(ticket_id, tenant_id, payload.get("prompt_version", "v1"))
                 run_id = run.id
@@ -66,8 +104,6 @@ class GraphRunner:
                 store.sync_run_failure(run_id, ticket_id, str(exc))
             logger.error("graph.failed", ticket_id=ticket_id, error=str(exc))
             raise
-        finally:
-            session.close()
 
     def _invoke_fresh(self, seed: dict, config: dict, store: StateStore, run_id: str) -> dict:
         result = self.app.invoke(seed, config=config)

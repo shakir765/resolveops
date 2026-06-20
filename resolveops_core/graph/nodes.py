@@ -23,8 +23,13 @@ from resolveops_core.graph.state import (
 )
 from resolveops_core.graph.state_store import StateStore
 from resolveops_core.logging import get_logger
+from resolveops_core.telemetry import get_tracer
 
 logger = get_logger(__name__)
+
+
+def _tracer():
+    return get_tracer(__name__)
 
 PROMPT_AGENTS = frozenset({"triage", "classifier", "diagnostic", "resolution", "communication"})
 
@@ -74,12 +79,20 @@ def _persist_step(agent_name: str, state: TicketState, raw_patch: dict) -> dict:
 
 def make_node(agent_name: str, fn):
     def node(state: TicketState) -> dict:
-        prompt_version = settings.prompt_version
-        if agent_name in PROMPT_AGENTS:
-            raw = fn(state, prompt_version)
-        else:
-            raw = fn(state)
-        return _persist_step(agent_name, state, raw)
+        with _tracer().start_as_current_span(
+            f"graph.node.{agent_name}",
+            attributes={
+                "graph.agent": agent_name,
+                "ticket.id": state.get("ticket_id", ""),
+                "run.id": state.get("run_id", ""),
+            },
+        ):
+            prompt_version = settings.prompt_version
+            if agent_name in PROMPT_AGENTS:
+                raw = fn(state, prompt_version)
+            else:
+                raw = fn(state)
+            return _persist_step(agent_name, state, raw)
 
     node.__name__ = agent_name
     return node

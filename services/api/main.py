@@ -19,15 +19,20 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from resolveops_core.config import settings
+from resolveops_core.logging import configure_logging, get_logger
+from resolveops_core.telemetry import instrument_fastapi, instrument_httpx, setup_tracing, shutdown_tracing
+
+configure_logging(settings.log_level)
+setup_tracing("resolveops-api")
+instrument_httpx()
+
 from resolveops_core.db.models import SessionLocal, init_db
 from resolveops_core.db.repository import IdempotencyRepository, TicketRepository, WorkflowRepository
 from resolveops_core.evaluation.metrics import EvaluationFramework
 from resolveops_core.infra.queue import TicketQueue
 from resolveops_core.integrations.ticketing import JiraClient, ServiceNowClient
-from resolveops_core.logging import configure_logging, get_logger
 from services.api.routes.webhooks import router as webhooks_router
 
-configure_logging(settings.log_level)
 logger = get_logger(__name__)
 templates = Jinja2Templates(directory="services/api/templates")
 
@@ -72,9 +77,11 @@ async def lifespan(app: FastAPI):
     await queue.connect()
     yield
     await queue.close()
+    shutdown_tracing()
 
 
 app = FastAPI(title="ResolveOps API", version="0.1.0", lifespan=lifespan)
+instrument_fastapi(app)
 
 app.add_middleware(
     CORSMiddleware,

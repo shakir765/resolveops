@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from pydantic import BaseModel, Field
 
 from fastapi import FastAPI
@@ -5,11 +7,21 @@ from fastapi import FastAPI
 from resolveops_core.config import settings
 from resolveops_core.logging import configure_logging, get_logger
 from resolveops_core.rag.knowledge_base import kb
+from resolveops_core.telemetry import instrument_fastapi, setup_tracing, shutdown_tracing
 
 configure_logging(settings.log_level)
+setup_tracing("resolveops-rag-service")
 logger = get_logger(__name__)
 
-app = FastAPI(title="ResolveOps RAG Service", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    shutdown_tracing()
+
+
+app = FastAPI(title="ResolveOps RAG Service", version="0.1.0", lifespan=lifespan)
+instrument_fastapi(app)
 
 
 class RetrieveRequest(BaseModel):
