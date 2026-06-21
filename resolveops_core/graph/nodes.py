@@ -71,8 +71,10 @@ def _persist_step(agent_name: str, state: TicketState, raw_patch: dict) -> dict:
         "graph.step",
         agent=agent_name,
         ticket_id=state.get("ticket_id"),
+        run_id=run_id,
         state_version=patch.get("state_version"),
         status=patch.get("status", state.get("status")),
+        patch=sanitize_patch_for_log(patch),
     )
     return patch
 

@@ -90,7 +90,6 @@ class GraphRunner:
             has_checkpoint = self._existing_checkpoint(thread_id)
 
             if has_checkpoint:
-                logger.info("graph.resume_checkpoint", ticket_id=ticket_id, thread_id=thread_id)
                 result = self._invoke_from_checkpoint(config, store, run_id)
             else:
                 workflow_repo.mark_started(run_id)
@@ -105,11 +104,32 @@ class GraphRunner:
             logger.error("graph.failed", ticket_id=ticket_id, error=str(exc))
             raise
 
+    def _log_resume_state(self, config: dict, run_id: str) -> None:
+        checkpoint = self.app.get_state(config)
+        resume_state = checkpoint.values or {}
+        logger.info(
+            "graph.resume_state",
+            ticket_id=resume_state.get("ticket_id"),
+            run_id=run_id,
+            thread_id=resume_state.get("thread_id"),
+            state_version=resume_state.get("state_version"),
+            state=snapshot_for_audit(resume_state),  # type: ignore[arg-type]
+        )
+
     def _invoke_fresh(self, seed: dict, config: dict, store: StateStore, run_id: str) -> dict:
+        logger.info(
+            "graph.initial_state",
+            ticket_id=seed.get("ticket_id"),
+            run_id=run_id,
+            thread_id=seed.get("thread_id"),
+            state_version=seed.get("state_version", 0),
+            state=snapshot_for_audit(seed),  # type: ignore[arg-type]
+        )
         result = self.app.invoke(seed, config=config)
         return self._finalize(result, config, store, run_id)
 
     def _invoke_from_checkpoint(self, config: dict, store: StateStore, run_id: str) -> dict:
+        self._log_resume_state(config, run_id)
         result = self.app.invoke(None, config=config)
         return self._finalize(result, config, store, run_id)
 
@@ -177,6 +197,7 @@ class GraphRunner:
                     "status": "diagnosing",
                 },
             )
+            self._log_resume_state(config, run.id)
             result = self.app.invoke(None, config=config)
             result = self._finalize(result, config, store, run.id)
             ticket = TicketRepository(session).get_ticket(run.ticket_id)
