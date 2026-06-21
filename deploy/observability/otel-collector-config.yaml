@@ -8,6 +8,11 @@ receivers:
 
 processors:
   batch:
+  attributes/loki:
+    actions:
+      - action: insert
+        key: loki.resource.labels
+        value: service.name, service.namespace, deployment.environment
 
 exporters:
   otlp/tempo:
@@ -16,6 +21,13 @@ exporters:
       insecure: true
   prometheus:
     endpoint: 0.0.0.0:8889
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    tls:
+      insecure: true
+    default_labels_enabled:
+      resource: true
+      attributes: false
 
 service:
   pipelines:
@@ -27,3 +39,7 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch, attributes/loki]
+      exporters: [loki]

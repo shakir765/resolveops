@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: str = "http://localhost:4317"
     otel_exporter_otlp_insecure: bool = True
     otel_traces_sample_ratio: float = 1.0
+    otel_logs_enabled: bool = True
 
 
 settings = Settings()

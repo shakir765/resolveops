@@ -1,4 +1,4 @@
-# Stop ResolveOps app services (API, RAG, Tool Runner, Graph Worker).
+# Stop ResolveOps app services (API, RAG, Tool Runner, Graph Worker, Portal).
 # Does NOT stop Docker infrastructure.
 #
 # Usage: .\scripts\stop_apps.ps1
@@ -126,17 +126,32 @@ if ($workerStopped -eq 0) {
     Write-Host "  No graph worker processes found." -ForegroundColor DarkGray
 }
 
+# 3b) Stop portal (Vite / Node)
+Write-Host "Stopping Portal processes..."
+$nodeStopped = 0
+foreach ($proc in @(Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue)) {
+    if ($proc.CommandLine -like "*vite*" -or $proc.CommandLine -like "*portal*") {
+        if (Stop-ProcessTree -ProcessId $proc.ProcessId -Label "Portal (Vite)") {
+            $nodeStopped++
+        }
+    }
+}
+if ($nodeStopped -eq 0) {
+    Write-Host "  No portal processes found." -ForegroundColor DarkGray
+}
+
 # 4) Cleanup anything still listening on app ports
-Write-Host "Cleaning up listeners on ports 8000, 8002, 8003..."
+Write-Host "Cleaning up listeners on ports 8000, 8002, 8003, 5173..."
 Stop-PortListener -Port 8000 -Label "API" | Out-Null
 Stop-PortListener -Port 8002 -Label "RAG" | Out-Null
 Stop-PortListener -Port 8003 -Label "Tool Runner" | Out-Null
+Stop-PortListener -Port 5173 -Label "Portal" | Out-Null
 
 Start-Sleep -Milliseconds 500
 
 # 5) Verify
 $stillListening = @()
-foreach ($port in @(8000, 8002, 8003)) {
+foreach ($port in @(8000, 8002, 8003, 5173)) {
     if (Test-PortListening -Port $port) { $stillListening += $port }
 }
 
@@ -150,6 +165,6 @@ if ($stillListening.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "Done. Docker infra (postgres/redis/rabbitmq) is still running." -ForegroundColor Green
-Write-Host "Start apps: .\scripts\start_apps.ps1"
-Write-Host "Stop infra: docker compose down"
+Write-Host "Done. Docker infra is still running." -ForegroundColor Green
+Write-Host "Start apps:  .\scripts\start_apps.ps1 -Background"
+Write-Host "Stop infra:  .\scripts\stop_docker.ps1"

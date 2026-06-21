@@ -1,8 +1,8 @@
-# ResolveOps - start Docker infrastructure only (postgres, redis, rabbitmq).
+# ResolveOps - start Docker infrastructure (postgres, redis, rabbitmq, observability stack).
 # Does NOT start API, RAG, Tool Runner, or Graph Worker.
 #
 # Usage:
-#   .\scripts\start_docker.ps1           # start infra containers
+#   .\scripts\start_docker.ps1           # start infra + observability containers
 #   .\scripts\start_docker.ps1 -SeedKb    # start infra + seed knowledge base (same as start_all step 1-2)
 
 param(
@@ -19,6 +19,7 @@ Write-Host "== ResolveOps: starting Docker infrastructure ==" -ForegroundColor C
 
 Ensure-ResolveOpsEnvFile -ProjectRoot $ProjectRoot
 Start-ResolveOpsInfra
+Write-ObservabilityEndpoints
 
 if ($SeedKb) {
     Write-Host ""

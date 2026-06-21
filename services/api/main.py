@@ -19,11 +19,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from resolveops_core.config import settings
-from resolveops_core.logging import configure_logging, get_logger
-from resolveops_core.telemetry import instrument_fastapi, instrument_httpx, setup_tracing, shutdown_tracing
+from resolveops_core.logging import get_logger
+from resolveops_core.telemetry import instrument_fastapi, instrument_httpx, setup_observability, shutdown_observability
 
-configure_logging(settings.log_level)
-setup_tracing("resolveops-api")
+setup_observability("resolveops-api", settings.log_level)
 instrument_httpx()
 
 from resolveops_core.db.models import SessionLocal, init_db
@@ -77,7 +76,7 @@ async def lifespan(app: FastAPI):
     await queue.connect()
     yield
     await queue.close()
-    shutdown_tracing()
+    shutdown_observability()
 
 
 app = FastAPI(title="ResolveOps API", version="0.1.0", lifespan=lifespan)

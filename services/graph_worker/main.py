@@ -3,11 +3,10 @@ import asyncio
 from opentelemetry.trace import SpanKind
 
 from resolveops_core.config import settings
-from resolveops_core.logging import configure_logging, get_logger
-from resolveops_core.telemetry import get_tracer, instrument_httpx, setup_tracing, shutdown_tracing
+from resolveops_core.logging import get_logger
+from resolveops_core.telemetry import get_tracer, instrument_httpx, setup_observability, shutdown_observability
 
-configure_logging(settings.log_level)
-setup_tracing("resolveops-graph-worker")
+setup_observability("resolveops-graph-worker", settings.log_level)
 instrument_httpx()
 logger = get_logger(__name__)
 
@@ -65,7 +64,7 @@ async def main() -> None:
     try:
         await queue.consume(handle_job)
     finally:
-        shutdown_tracing()
+        shutdown_observability()
 
 
 if __name__ == "__main__":

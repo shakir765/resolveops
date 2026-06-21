@@ -1,4 +1,4 @@
-# ResolveOps - stop Docker infrastructure only (postgres, redis, rabbitmq).
+# ResolveOps - stop Docker infrastructure (postgres, redis, rabbitmq, observability stack).
 # Does NOT stop local app processes (API, RAG, Tool Runner, Graph Worker).
 #
 # Usage:

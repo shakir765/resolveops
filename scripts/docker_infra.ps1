@@ -1,6 +1,9 @@
-# Shared Docker infrastructure helpers (postgres, redis, rabbitmq).
+# Shared Docker infrastructure helpers (postgres, redis, rabbitmq, observability stack).
 
-$script:InfraServices = @("postgres", "redis", "rabbitmq")
+$script:CoreInfraServices = @("postgres", "redis", "rabbitmq")
+$script:ObservabilityServices = @("tempo", "loki", "prometheus", "otel-collector", "grafana")
+$script:InfraServices = $script:CoreInfraServices + $script:ObservabilityServices
+$script:InfraVolumes = @("postgres_data", "chroma_data", "tempo_data", "loki_data", "grafana_data")
 $script:PostgresUser = "resolveops"
 $script:PostgresDb = "resolveops"
 
@@ -43,17 +46,23 @@ function Wait-PostgresHealthy {
 }
 
 function Wait-InfraHealthy {
-    param([int]$TimeoutSeconds = 60)
-    Write-Host "Waiting for containers to be healthy..."
+    param([int]$TimeoutSeconds = 90)
+    Write-Host "Waiting for containers to be ready..."
     $elapsed = 0
     while ($elapsed -lt $TimeoutSeconds) {
         $lines = docker compose ps --format json 2>$null
         if ($lines) {
             $ps = $lines | ForEach-Object { $_ | ConvertFrom-Json }
-            $healthy = @($ps | Where-Object {
-                    $script:InfraServices -contains $_.Service -and $_.Health -eq "healthy"
+            $coreHealthy = @($ps | Where-Object {
+                    $script:CoreInfraServices -contains $_.Service -and $_.Health -eq "healthy"
                 }).Count
-            if ($healthy -ge $script:InfraServices.Count) { return $true }
+            $obsRunning = @($ps | Where-Object {
+                    $script:ObservabilityServices -contains $_.Service -and $_.State -eq "running"
+                }).Count
+            if ($coreHealthy -ge $script:CoreInfraServices.Count -and
+                $obsRunning -ge $script:ObservabilityServices.Count) {
+                return $true
+            }
         }
         Start-Sleep -Seconds 2
         $elapsed += 2
@@ -62,17 +71,36 @@ function Wait-InfraHealthy {
 }
 
 function Start-ResolveOpsInfra {
-    Write-Host "Starting Docker ($($script:InfraServices -join ', '))..." -ForegroundColor Yellow
-    docker compose up -d @script:InfraServices
+    Write-Host "Starting Docker core ($($script:CoreInfraServices -join ', '))..." -ForegroundColor Yellow
+    docker compose up -d @script:CoreInfraServices
     if ($LASTEXITCODE -ne 0) {
-        throw "docker compose up failed."
+        throw "docker compose up failed for core infra."
+    }
+
+    Write-Host "Starting Docker observability ($($script:ObservabilityServices -join ', '))..." -ForegroundColor Yellow
+    docker compose up -d @script:ObservabilityServices
+    if ($LASTEXITCODE -ne 0) {
+        throw "docker compose up failed for observability stack."
     }
 
     if (-not (Wait-InfraHealthy)) {
-        Write-Warning "Not all infra containers reported healthy within 60 seconds."
+        Write-Warning "Not all infra containers reported ready within 90 seconds."
     }
 
     docker compose ps @script:InfraServices
+}
+
+function Write-ObservabilityEndpoints {
+    Write-Host ""
+    Write-Host "Observability endpoints:" -ForegroundColor Cyan
+    Write-Host "  Grafana:        http://localhost:3000"
+    Write-Host "  Tempo:          http://localhost:3200"
+    Write-Host "  Prometheus:     http://localhost:9090"
+    Write-Host "  Loki:           http://localhost:3100"
+    Write-Host "  OTLP (gRPC):    localhost:4317"
+    Write-Host "  OTLP (HTTP):    localhost:4318"
+    Write-Host "  RabbitMQ UI:    http://localhost:15672"
+    Write-Host "  RedisInsight:   http://localhost:8001"
 }
 
 function Clear-ResolveOpsDatabase {
@@ -128,11 +156,11 @@ function Stop-ResolveOpsInfra {
     }
 
     if ($ResetVolume) {
-        Write-Host "Removing infra containers and named volumes (postgres_data, chroma_data)..." -ForegroundColor Yellow
+        Write-Host "Removing infra containers and named volumes ($($script:InfraVolumes -join ', '))..." -ForegroundColor Yellow
         docker compose rm -f @script:InfraServices | Out-Null
 
         $projectName = Get-ComposeProjectName -ProjectRoot $ProjectRoot
-        foreach ($volume in @("postgres_data", "chroma_data")) {
+        foreach ($volume in $script:InfraVolumes) {
             $volumeName = "${projectName}_${volume}"
             docker volume rm $volumeName -f 2>$null | Out-Null
             if ($LASTEXITCODE -eq 0) {

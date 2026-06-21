@@ -65,7 +65,7 @@ class TicketQueue:
                 headers=inject_trace_context(),
             )
             await self._channel.default_exchange.publish(message, routing_key=self.queue_name)
-        logger.info("queue.published", queue=self.queue_name, ticket_id=payload.get("ticket_id"))
+            logger.info("queue.published", queue=self.queue_name, ticket_id=payload.get("ticket_id"))
 
     async def consume(self, handler) -> None:
         if not self._channel:
@@ -88,6 +88,11 @@ class TicketQueue:
                             "ticket.id": ticket_id or "",
                         },
                     ) as span:
+                        logger.info(
+                            "queue.processing",
+                            queue=self.queue_name,
+                            ticket_id=ticket_id,
+                        )
                         try:
                             await handler(payload)
                         except LockWaitTimeout as exc:

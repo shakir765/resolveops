@@ -1,19 +1,38 @@
 apiVersion: 1
 
+# Force Tempo datasource refresh so tracesToLogs picks up the fixed query.
+deleteDatasources:
+  - name: Tempo
+    orgId: 1
+
 datasources:
   - name: Tempo
     type: tempo
     access: proxy
     url: http://tempo:3200
     isDefault: true
+    uid: tempo
+    editable: false
     jsonData:
       tracesToLogsV2:
         datasourceUid: loki
+        spanStartTimeShift: -1h
+        spanEndTimeShift: 1h
+        tags:
+          - key: service.name
+            value: service_name
+        filterByTraceID: false
+        filterBySpanID: false
+        customQuery: true
+        # Span time range is applied automatically. Parent spans (e.g. queue.process) often
+        # have no log lines with their span_id — child spans emit the logs instead.
+        query: '{service_name="$${__span.tags["service.name"]}"} |= "$${__trace.traceId}"'
       serviceMap:
         datasourceUid: prometheus
       nodeGraph:
         enabled: true
-    uid: tempo
+      lokiSearch:
+        datasourceUid: loki
 
   - name: Prometheus
     type: prometheus
@@ -26,3 +45,16 @@ datasources:
     access: proxy
     url: http://loki:3100
     uid: loki
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"trace_id":"([0-9a-f]+)"'
+          name: TraceID
+          url: "$${__value.raw}"
+          urlDisplayLabel: View trace
+        - datasourceUid: tempo
+          matcherRegex: '"traceid":"([0-9a-f]+)"'
+          name: TraceID
+          url: "$${__value.raw}"
+          urlDisplayLabel: View trace

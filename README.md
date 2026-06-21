@@ -152,12 +152,13 @@ API/Worker -> seed initial_state -> LangGraph invoke (Redis checkpoint each step
 
 ## Observability (OpenTelemetry)
 
-Phase 0 and 1 are implemented: OTLP trace export with Grafana, Tempo, Prometheus, Loki, and the OTel Collector.
+Phase 0–2 are implemented: distributed traces, correlated JSON logs, and the LGTM stack in Docker.
 
 ```text
 Services -> OTLP (4317) -> OTel Collector -> Tempo (traces)
+                                         -> Loki (logs)
                                          -> Prometheus (collector metrics)
-Grafana :3000  (Tempo / Prometheus / Loki datasources pre-provisioned)
+Grafana :3000  (trace <-> log correlation pre-provisioned)
 ```
 
 **Trace coverage:**
@@ -166,23 +167,45 @@ Grafana :3000  (Tempo / Prometheus / Loki datasources pre-provisioned)
 - Manual spans: `graph.run`, `graph.node.*`, `worker.process_ticket`, `queue.publish/process`
 - httpx auto-instrumentation for RAG and tool-runner calls from graph agents
 
+**Log correlation (Phase 2):**
+- Every structlog JSON line includes `trace_id`, `span_id`, and `service` when a span is active
+- Logs export via OTLP to the collector, then to Loki
+- Grafana Tempo: **Trace -> Logs** jumps by `trace_id`
+- Grafana Loki: **Logs -> Trace** via derived field on `trace_id`
+
+**Query logs in Grafana (Explore -> Loki):**
+
+```logql
+{job="resolveops/resolveops-graph-worker"}
+{job=~"resolveops/resolveops-.+"} |= "graph.step"
+{job=~"resolveops/.+"} |= "queue.published"
+```
+
+Note: Loki labels are `job` (e.g. `resolveops/resolveops-api`), not `service_name`. Application `service` is inside the JSON body.
+
 **Local usage:**
 
 ```bash
-docker compose up -d --build
-# Grafana: http://localhost:3000  -> Explore -> Tempo
-# Submit a ticket, then search traces by service or ticket.id attribute
+.\scripts\start_docker.ps1
+.\scripts\start_apps.ps1 -Background
+# Grafana: http://localhost:3000  -> Explore -> Tempo or Loki
+# Submit a ticket, open a trace, click "Logs for this span"
 ```
 
 Configure via `.env`:
 
 ```env
 OTEL_ENABLED=true
+OTEL_LOGS_ENABLED=true
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 OTEL_TRACES_SAMPLE_RATIO=1.0
 ```
 
-Set `OTEL_ENABLED=false` to disable export (e.g. unit tests).
+Set `OTEL_ENABLED=false` to disable trace and log export (e.g. unit tests).
+
+**Tempo -> Logs:** `trace_id` is shared by every service in one request, so `{job=~"resolveops/.+"} |= "<trace_id>"` shows all services. For a single span, also filter by `span_id` and service (see LogQL examples in docs above).
+
+Restart Grafana after datasource changes: `docker compose restart grafana`.
 
 ## Testing
 
